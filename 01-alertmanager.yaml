@@ -1,0 +1,148 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: alertmanager
+  name: alertmanager
+  namespace: prombench
+data:
+  alertmanager.yaml: cmVjZWl2ZXJzOgotIG5hbWU6ICJudWxsIgpyb3V0ZToKICByZWNlaXZlcjogIm51bGwiCnRlbXBsYXRlczoKLSAvZXRjL2FsZXJ0bWFuYWdlci9jb25maWcvKi50bXBsCg==
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  labels:
+    app: alertmanager
+  name: bench
+  namespace: prombench
+spec:
+  image: quay.io/prometheus/alertmanager:v0.25.1
+  version: v0.25.1
+  serviceAccountName: prombench
+  replicas: 2
+  nodeSelector:
+    kubernetes.io/os: linux
+  # tolerations:
+  # - effect: NoSchedule
+  #   key: dedicated
+  #   value: master
+  # - effect: NoSchedule
+  #   key: CriticalAddonsOnly
+  #   value: "True"
+  retention: "120h"
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "1024Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+  configSecret: alertmanager
+  alertmanagerConfigMatcherStrategy:
+    type: None
+  alertmanagerConfigNamespaceSelector: {}
+  alertmanagerConfigSelector:
+    matchLabels:
+      prometheus.io/used-by: "bench"
+  routePrefix: "/"
+  logLevel: info
+  clusterPeerTimeout: 60s
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  storage:
+    disableMountSubPath: true
+    volumeClaimTemplate:
+      metadata:
+        name: storage
+      spec:
+        storageClassName: general
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi
+  podMetadata:
+    labels:
+      app: alertmanager
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: alertmanager
+              alertmanager: bench
+  containers:
+    - name: config-reloader
+      args:
+        - --listen-address=:8080
+        - --reload-url=http://localhost:9093/-/reload
+        - --config-file=/etc/alertmanager/config/alertmanager.yaml.gz
+        - --config-envsubst-file=/etc/alertmanager/config_out/alertmanager.env.yaml
+        - --watched-dir=/etc/alertmanager/config
+        - --watch-interval=45s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: prombench
+spec:
+  ports:
+  - name: web
+    port: 9093
+    targetPort: web
+  selector:
+    app.kubernetes.io/name: alertmanager
+  type: NodePort
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    prometheus.io/used-by: bench
+  name: alertmanager
+  namespace: prombench
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  namespaceSelector:
+    matchNames:
+      - prombench
+  podMetricsEndpoints:
+  # alertmanager
+  - path: /metrics
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_container_port_number
+        regex: "9093"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - sourceLabels:
+          - node_name
+        action: replace
+        targetLabel: node
+      - targetLabel: job
+        replacement: alertmanager
+        action: replace
+  # config-reloader
+  - path: /metrics
+    relabelings:
+      - sourceLabels:
+         - __meta_kubernetes_pod_container_port_number
+         - __meta_kubernetes_pod_container_init
+        regex: "8080;false"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - sourceLabels:
+        - node_name
+        action: replace
+        targetLabel: node
+      - targetLabel: job
+        replacement: alertmanager-config-reloader
+        action: replace

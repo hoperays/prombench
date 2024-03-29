@@ -1,0 +1,174 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app: prometheus
+  name: bench
+  namespace: prombench
+spec:
+  image: quay.io/prometheus/prometheus:v2.45.3
+  version: v2.45.3
+  serviceAccountName: prombench
+  externalLabels:
+    xxxx_cluster_id: bench_cluster
+  nodeSelector:
+    kubernetes.io/os: linux
+  # tolerations:
+  # - effect: NoSchedule
+  #   key: dedicated
+  #   value: master
+  # - effect: NoSchedule
+  #   key: CriticalAddonsOnly
+  #   value: "True"
+  prometheusExternalLabelName: ""
+  replicas: 2
+  shards: 1
+  scrapeInterval: 30s
+  scrapeTimeout: 29s
+  resources:
+    limits:
+      cpu: "4000m"
+      memory: "8192Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+  routePrefix: "/"
+  logLevel: info
+  retention: 30d
+  query:
+    maxConcurrency: 20
+    timeout: 2m
+  enableFeatures:
+    - extra-scrape-metrics
+  serviceMonitorSelector:
+    matchLabels:
+      prometheus.io/used-by: "bench"
+  serviceMonitorNamespaceSelector: {}
+  podMonitorSelector:
+    matchLabels:
+      prometheus.io/used-by: "bench"
+  podMonitorNamespaceSelector: {}
+  probeSelector:
+    matchLabels:
+      prometheus.io/used-by: "bench"
+  probeNamespaceSelector: {}
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  # secrets:
+  #   - etcd-certs
+  storage:
+    disableMountSubPath: true
+    volumeClaimTemplate:
+      metadata:
+        name: storage
+      spec:
+        storageClassName: general
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 500Gi
+  podMetadata:
+    labels:
+      app: prometheus
+  # affinity:
+  #   podAntiAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       - topologyKey: kubernetes.io/hostname
+  #         labelSelector:
+  #           matchLabels:
+  #             app: prometheus
+  #             prometheus: bench
+  #             # Rely on https://github.com/hoperays/prometheus-operator/pull/88
+  #             operator.prometheus.io/shard: ""
+  thanos:
+    image: quay.io/thanos/thanos:v0.32.5
+    version: v0.32.5
+    resources:
+      limits:
+        cpu: "2000m"
+        memory: "4096Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: prombench
+spec:
+  ports:
+  - name: web
+    port: 9090
+    targetPort: web
+  selector:
+    app.kubernetes.io/name: prometheus
+  type: NodePort
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    prometheus.io/used-by: bench
+  name: prometheus
+  namespace: prombench
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  namespaceSelector:
+    matchNames:
+      - prombench
+  podMetricsEndpoints:
+  # prometheus
+  - path: /metrics
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_container_port_number
+        regex: "9090"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - sourceLabels:
+          - node_name
+        action: replace
+        targetLabel: node
+      - targetLabel: job
+        replacement: prometheus
+        action: replace
+  # thanos-sidecar
+  - path: /metrics
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_container_port_number
+        regex: "10902"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - sourceLabels:
+          - node_name
+        action: replace
+        targetLabel: node
+      - targetLabel: job
+        replacement: prometheus-thanos-sidecar
+        action: replace
+  # config-reloader
+  - path: /metrics
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_container_port_number
+          - __meta_kubernetes_pod_container_init
+        regex: "8080;false"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - sourceLabels:
+          - node_name
+        action: replace
+        targetLabel: node
+      - targetLabel: job
+        replacement: prometheus-config-reloader
+        action: replace

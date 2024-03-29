@@ -1,0 +1,22 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus.io/used-by: bench
+  name: bench.rules
+  namespace: prombench
+spec:
+  groups:
+  - name: namespace-pod-status.rules
+    rules:
+    - alert: 命名空间pod的容器CPU使用率大于10%
+      expr: sort_desc(irate(container_cpu_usage_seconds_total[5m]) / ignoring(cpu) (container_spec_cpu_quota / container_spec_cpu_period)) > 0.1
+      for: 1m
+      labels:
+        purpose: bench
+        severity: warning
+      annotations:
+        summary: "命名空间 {{ $labels.namespace }} 下，pod {{ $labels.pod }} 的容器 {{ $labels.container }} CPU使用率大于10%，当前为当前为 {{ $value | humanizePercentage }}。"
+        description: "命名空间 {{ $labels.namespace }} 下，pod {{ $labels.pod }} 的容器 {{ $labels.container }} CPU使用率大于10%，持续1分钟告警。"
+        solution: "请自行检查业务，必要时通过增加pod副本数来降低单个实例的负载。"

@@ -1,0 +1,137 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: thanos-query
+  name: thanos-query-bench
+  namespace: prombench
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: thanos-query
+      app.kubernetes.io/instance: bench
+      app.kubernetes.io/managed-by: deployment-controller
+      app.kubernetes.io/name: thanos-query
+      thanos-query: bench
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: thanos-query
+      labels:
+        app: thanos-query
+        app.kubernetes.io/instance: bench
+        app.kubernetes.io/managed-by: deployment-controller
+        app.kubernetes.io/name: thanos-query
+        thanos-query: bench
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: thanos-query
+                  thanos-query: bench
+      nodeSelector:
+        kubernetes.io/os: linux
+      # tolerations:
+      # - effect: NoSchedule
+      #   key: dedicated
+      #   value: master
+      # - effect: NoSchedule
+      #   key: CriticalAddonsOnly
+      #   value: "True"
+      serviceAccountName: prombench
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: thanos-query
+          image: quay.io/thanos/thanos:v0.32.5
+          imagePullPolicy: IfNotPresent
+          args:
+            - query
+            - --query.replica-label=prometheus_replica
+            - --query.replica-label=thanos_ruler_replica
+            - --store=dnssrv+_grpc._tcp.prometheus-operated
+            - --store=dnssrv+_grpc._tcp.thanos-ruler-operated
+            - --log.level=info
+            - --alert.query-url=http://prombench.web.default.prometheus.io
+          resources:
+            limits:
+              cpu: "2000m"
+              memory: "4096Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+          ports:
+            - containerPort: 10901
+              name: grpc
+            - containerPort: 10902
+              name: web
+          readinessProbe:
+            httpGet:
+              port: 10902
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 30
+          livenessProbe:
+            tcpSocket:
+              port: 10902
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-query
+  namespace: prombench
+spec:
+  ports:
+  - name: grpc
+    port: 10901
+    targetPort: grpc
+  - name: web
+    port: 10902
+    targetPort: web
+  selector:
+    app.kubernetes.io/name: thanos-query
+  type: NodePort
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    prometheus.io/used-by: bench
+  name: thanos-query
+  namespace: prombench
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-query
+  namespaceSelector:
+    matchNames:
+      - prombench
+  podMetricsEndpoints:
+  - path: /metrics
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_container_port_number
+        regex: "10902"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - regex: pod
+        action: labeldrop
+      - sourceLabels:
+          - node_name
+        action: replace
+        targetLabel: node
+      - targetLabel: job
+        replacement: thanos-query
+        action: replace
