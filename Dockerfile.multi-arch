@@ -1,0 +1,13 @@
+# By default we pin to amd64 sha. Use make docker to automatically adjust for arm64 versions.
+ARG BASE_DOCKER_SHA="f173c44fab35484fa0e940e42929efe2a2f506feda431ba72c5f0d79639d7f55"
+
+FROM quay.io/prometheus/busybox@sha256:${BASE_DOCKER_SHA}
+LABEL maintainer="The Prombench Authors"
+
+ARG ARCH="amd64"
+ARG OS="linux"
+
+COPY .build/${OS}-${ARCH}/expose-many-metrics /bin/
+
+USER       nobody
+ENTRYPOINT [ "/bin/expose-many-metrics" ]

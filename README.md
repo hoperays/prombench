@@ -12,3 +12,8 @@ Benchmark for prometheus-thanos based monitoring systems.
 * kubelet/cadvisor
 
 ![prombench](./prombench.png)
+
+References:
+
+* [brian-brazil/benchmarks](https://github.com/brian-brazil/benchmarks)
+* [VictoriaMetrics/prometheus-benchmark](https://github.com/VictoriaMetrics/prometheus-benchmark)

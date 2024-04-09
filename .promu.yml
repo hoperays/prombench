@@ -1,0 +1,12 @@
+go:
+  version: 1.20
+repository:
+  path: github.com/hoperays/prombench
+build:
+  binaries:
+    - name: expose-many-metrics
+      path: ./cmd/expose-many-metrics
+crossbuild:
+  platforms:
+    - linux/amd64
+    - linux/arm64
