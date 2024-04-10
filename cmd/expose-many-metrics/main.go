@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
@@ -57,7 +58,7 @@ func (collector) Collect(ch chan<- prometheus.Metric) {
 func main() {
 	prometheus.MustRegister(collector{})
 	flag.Parse()
-	fmt.Printf("Quickly generating %d timeseries....", *numTimeseries)
+	log.Printf("Quickly generating %d timeseries....", *numTimeseries)
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":12345", nil)
 }
