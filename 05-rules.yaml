@@ -8,15 +8,15 @@ metadata:
   namespace: prombench
 spec:
   groups:
-  - name: namespace-pod-status.rules
+  - name: prombench.rules
     rules:
-    - alert: 命名空间pod的容器CPU使用率大于10%
-      expr: sort_desc(irate(container_cpu_usage_seconds_total[5m]) / ignoring(cpu) (container_spec_cpu_quota / container_spec_cpu_period)) > 0.1
+    - alert: 命名空间pod的容器实验数据５分钟内增长超过40
+      expr: sort_desc(increase(example_timeseries_total[5m])) > 40
       for: 1m
       labels:
         purpose: bench
-        severity: warning
+        severity: info
       annotations:
-        summary: "命名空间 {{ $labels.namespace }} 下，pod {{ $labels.pod }} 的容器 {{ $labels.container }} CPU使用率大于10%，当前为当前为 {{ $value | humanizePercentage }}。"
-        description: "命名空间 {{ $labels.namespace }} 下，pod {{ $labels.pod }} 的容器 {{ $labels.container }} CPU使用率大于10%，持续1分钟告警。"
-        solution: "请自行检查业务，必要时通过增加pod副本数来降低单个实例的负载。"
+        summary: "命名空间 {{ $labels.namespace }} 下，pod {{ $labels.pod }} 的容器 {{ $labels.container }} 实验数据５分钟内增长超过40，当前为 {{ $value | humanize }}。"
+        description: "命名空间 {{ $labels.namespace }} 下，pod {{ $labels.pod }} 的容器 {{ $labels.container }} 实验数据５分钟内增长超过40，持续1分钟告警。"
+        solution: "压力测试触发的告警，请忽略。"
