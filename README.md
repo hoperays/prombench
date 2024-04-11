@@ -9,7 +9,7 @@ Benchmark for prometheus-thanos based monitoring systems.
 * thanos-ruler
 * thanos-query
 * grafana
-* kubelet/cadvisor
+* generate-timeseries
 
 ![prombench](./prombench.png)
 
