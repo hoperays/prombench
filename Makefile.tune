@@ -13,7 +13,17 @@ TIMESERIES := $(addprefix timeseries-,$(PROMBENCH))
 timeseries: $(TIMESERIES)
 $(TIMESERIES): timeseries-%:
 	@kubectl patch deploy -n "$*" generate-timeseries --type='json' \
-		-p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args/0", "value": "--timeseries=$(NUMBER)"}]'
+		-p='[{"op":"replace","path":"/spec/template/spec/containers/0/args/0","value":"--timeseries=$(NUMBER)"}]'
+
+INTERVAL        ?= 30s
+TIMEOUT         ?= 29s
+SCRAPE_STRATEGY := $(addprefix scrape-strategy-,$(PROMBENCH))
+
+.PHONY: scrape-strategy
+scrape-strategy: $(SCRAPE_STRATEGY)
+$(SCRAPE_STRATEGY): scrape-strategy-%:
+	@kubectl patch podmonitor -n "$*" generate-timeseries --type='json' \
+		-p='[{"op":"replace","path":"/spec/podMetricsEndpoints/0/interval","value":"$(INTERVAL)"},{"op":"replace","path":"/spec/podMetricsEndpoints/0/scrapeTimeout","value":"$(TIMEOUT)"}]'
 
 SHARDS            ?= 1
 PROMETHEUS_SHARDS := $(addprefix prometheus-shards-,$(PROMBENCH))
@@ -22,4 +32,4 @@ PROMETHEUS_SHARDS := $(addprefix prometheus-shards-,$(PROMBENCH))
 prometheus-shards: $(PROMETHEUS_SHARDS)
 $(PROMETHEUS_SHARDS): prometheus-shards-%:
 	@kubectl patch prom -n "$*" bench --type='json' \
-		-p='[{"op": "replace", "path": "/spec/shards", "value": $(SHARDS)}]'
+		-p='[{"op":"replace","path":"/spec/shards","value":$(SHARDS)}]'
