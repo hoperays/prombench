@@ -1,0 +1,25 @@
+REPLICAS  ?= 3
+GENERATOR := $(addprefix generator-,$(PROMBENCH))
+
+.PHONY: generator
+generator: $(GENERATOR)
+$(GENERATOR): generator-%:
+	@kubectl scale deploy -n "$*" generate-timeseries --replicas $(REPLICAS)
+
+NUMBER     ?= 10000
+TIMESERIES := $(addprefix timeseries-,$(PROMBENCH))
+
+.PHONY: timeseries
+timeseries: $(TIMESERIES)
+$(TIMESERIES): timeseries-%:
+	@kubectl patch deploy -n "$*" generate-timeseries --type='json' \
+		-p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args/0", "value": "--timeseries=$(NUMBER)"}]'
+
+SHARDS            ?= 1
+PROMETHEUS_SHARDS := $(addprefix prometheus-shards-,$(PROMBENCH))
+
+.PHONY: prometheus-shards
+prometheus-shards: $(PROMETHEUS_SHARDS)
+$(PROMETHEUS_SHARDS): prometheus-shards-%:
+	@kubectl patch prom -n "$*" bench --type='json' \
+		-p='[{"op": "replace", "path": "/spec/shards", "value": $(SHARDS)}]'
