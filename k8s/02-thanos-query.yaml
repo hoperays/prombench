@@ -58,9 +58,9 @@ spec:
             - --log.level=info
             - --alert.query-url=http://prombench.web.default.prometheus.io
           resources:
-            limits:
-              cpu: "2000m"
-              memory: "4096Mi"
+            # limits:
+            #   cpu: "2000m"
+            #   memory: "4096Mi"
             requests:
               cpu: "100m"
               memory: "128Mi"

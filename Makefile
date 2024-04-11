@@ -61,12 +61,6 @@ install-prombench:
 .PHONY: uninstall-prombench
 uninstall-prombench:
 
-.PHONY: turnon-limits
-turnon-limits:
-
-.PHONY: turnoff-limits
-turnoff-limits:
-
 .PHONY: generator
 generator:
 

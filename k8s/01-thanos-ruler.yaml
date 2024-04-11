@@ -51,9 +51,9 @@ spec:
       prometheus.io/used-by: "bench"
   retention: 30d
   resources:
-    limits:
-      cpu: "2000m"
-      memory: "4096Mi"
+    # limits:
+    #   cpu: "2000m"
+    #   memory: "4096Mi"
     requests:
       cpu: "100m"
       memory: "128Mi"

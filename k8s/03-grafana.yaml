@@ -68,12 +68,12 @@ spec:
               port: 3000
             timeoutSeconds: 1
           resources:
-            limits:
-              cpu: "2000m"
-              memory: "4096Mi"
+            # limits:
+            #   cpu: "2000m"
+            #   memory: "4096Mi"
             requests:
-              cpu: 250m
-              memory: 750Mi
+              cpu: "250m"
+              memory: "768Mi"
           volumeMounts:
             - mountPath: /var/lib/grafana
               name: grafana-bench-pv
