@@ -55,11 +55,25 @@ update-busybox:
 clean:
 	@rm -rf ./.build/
 
+.PHONY: install-crds
+install-crds:
+	@scripts/install-crds.sh
+
+PROMBENCH         ?= prombench
+INSTALL_PROMBENCH := $(addprefix install-prombench-,$(PROMBENCH))
+
 .PHONY: install-prombench
-install-prombench:
+install-prombench: $(INSTALL_PROMBENCH)
+$(INSTALL_PROMBENCH): install-prombench-%:
+	@scripts/install-prombench.sh "$*"
+
+UNINSTALL_PROMBENCH := $(addprefix uninstall-prombench-,$(PROMBENCH))
 
 .PHONY: uninstall-prombench
-uninstall-prombench:
+uninstall-prombench: $(UNINSTALL_PROMBENCH)
+$(UNINSTALL_PROMBENCH): uninstall-prombench-%:
+	@kubectl delete namespace "$*"
+	@kubectl delete clusterrolebinding "$*"
 
 .PHONY: generator
 generator:
