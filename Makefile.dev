@@ -24,11 +24,13 @@ include .busybox-versions
 
 DOCKER_ARCHS       ?= amd64 arm64
 BUILD_DOCKER_ARCHS := $(addprefix docker-build-,$(DOCKER_ARCHS))
+REPOSITORY         := quay.io/hoperays/prombench
+TAG                ?= latest
 
 .PHONY: docker-build
 docker-build: $(BUILD_DOCKER_ARCHS)
 $(BUILD_DOCKER_ARCHS): docker-build-%:
-	@docker build -t "quay.io/hoperays/prombench-linux-$*" \
+	@docker build -t "$(REPOSITORY)-linux-$*:$(TAG)" \
 		--build-arg BASE_DOCKER_SHA="$($*)" \
 		--build-arg ARCH="$*" \
 		-f Dockerfile.multi-arch .
@@ -38,14 +40,14 @@ PUSH_DOCKER_ARCHS := $(addprefix docker-push-,$(DOCKER_ARCHS))
 .PHONY: docker-push
 docker-push: $(PUSH_DOCKER_ARCHS)
 $(PUSH_DOCKER_ARCHS): docker-push-%:
-	@docker push "quay.io/hoperays/prombench-linux-$*"
+	@docker push "$(REPOSITORY)-linux-$*:$(TAG)"
 
 .PHONY: docker-manifest
 docker-manifest:
-	@docker manifest rm quay.io/hoperays/prombench
-	@docker manifest create -a quay.io/hoperays/prombench \
-		$(foreach ARCH,$(DOCKER_ARCHS),quay.io/hoperays/prombench-linux-$(ARCH))
-	@docker manifest push quay.io/hoperays/prombench
+	@docker manifest rm $(REPOSITORY):$(TAG)
+	@docker manifest create -a $(REPOSITORY):$(TAG) \
+		$(foreach ARCH,$(DOCKER_ARCHS),$(REPOSITORY)-linux-$(ARCH):$(TAG))
+	@docker manifest push $(REPOSITORY):$(TAG)
 
 .PHONY: update-busybox
 update-busybox:
