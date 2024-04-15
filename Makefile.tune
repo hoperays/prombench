@@ -1,29 +1,22 @@
 REPLICAS  ?= 3
+NUMBER    ?= 10000
 GENERATOR := $(addprefix generator-,$(PROMBENCH))
 
 .PHONY: generator
 generator: $(GENERATOR)
 $(GENERATOR): generator-%:
-	@kubectl scale deploy -n "$*" generate-timeseries --replicas $(REPLICAS)
-
-NUMBER     ?= 10000
-TIMESERIES := $(addprefix timeseries-,$(PROMBENCH))
-
-.PHONY: timeseries
-timeseries: $(TIMESERIES)
-$(TIMESERIES): timeseries-%:
 	@kubectl patch deploy -n "$*" generate-timeseries --type='json' \
-		-p='[{"op":"replace","path":"/spec/template/spec/containers/0/args/0","value":"--timeseries=$(NUMBER)"}]'
+		-p='[{"op":"replace","path":"/spec/replicas","value":$(REPLICAS)},{"op":"replace","path":"/spec/template/spec/containers/0/args/0","value":"--timeseries=$(NUMBER)"}]'
 
-INTERVAL ?= 30s
-TIMEOUT  ?= 29s
-SCRAPE   := $(addprefix scrape-,$(PROMBENCH))
+INTERVAL      ?= 30s
+TIMEOUT       ?= 29s
+GLOBAL_SCRAPE := $(addprefix global-scrape-,$(PROMBENCH))
 
-.PHONY: scrape
-scrape: $(SCRAPE)
-$(SCRAPE): scrape-%:
-	@kubectl patch podmonitor -n "$*" generate-timeseries --type='json' \
-		-p='[{"op":"replace","path":"/spec/podMetricsEndpoints/0/interval","value":"$(INTERVAL)"},{"op":"replace","path":"/spec/podMetricsEndpoints/0/scrapeTimeout","value":"$(TIMEOUT)"}]'
+.PHONY: global-scrape
+global-scrape: $(GLOBAL_SCRAPE)
+$(GLOBAL_SCRAPE): global-scrape-%:
+	@kubectl patch prom -n "$*" bench --type='json' \
+		-p='[{"op":"replace","path":"/spec/scrapeInterval","value":$(INTERVAL)},{"op":"replace","path":"/spec/scrapeTimeout","value":$(TIMEOUT)}]'
 
 SHARDS     ?= 1
 PROMETHEUS := $(addprefix prometheus-,$(PROMBENCH))

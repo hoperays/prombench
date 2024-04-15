@@ -23,6 +23,7 @@ Usage:
 * Install prombench cluster(s)
 
   ```
+  # PROMBENCH default value: prombench
   # Deploy one prombench cluster in 'prombench' namespace.
   make install-prombench
   ```
@@ -59,43 +60,42 @@ Usage:
   ```
 
   ```
-  # PROMBENCH default value: prombench
   # Deploy two prombench clusters in 'prombench0' and 'prombench1' namespaces.
   make install-prombench PROMBENCH="prombench0 prombench1"
   ```
 * Uninstall prombench cluster(s)
 
   ```
+  # PROMBENCH default value: prombench
   # Clean up one prombench cluster in 'prombench' namespace.
   make uninstall-prombench
+  ```
 
-  # PROMBENCH default value: prombench
+  ```
   # Clean up two prombench clusters in 'prombench0' and 'prombench1' namespaces.
   make uninstall-prombench PROMBENCH="prombench0 prombench1"
   ```
-* Modify the replicas of generate-timeseries deployment
+* Modify the replicas and the timeseries number of generate-timeseries deployment
 
   ```
-  # REPLICAS default value: 3
-  make generator REPLICAS=6
+  # PROMBENCH default value: prombench
+  # REPLICAS  default value: 3
+  # NUMBER    default value: 10000
+  make generator REPLICAS=6 NUMBER=20000
   ```
-* Modify the timeseries number of each generate-timeseries instance
+* Modify the global scrape strategy of prometheus
 
   ```
-  # NUMBER default value: 10000
-  make timeseries NUMBER=20000
-  ```
-* Modify the scrape strategy generate-timeseries
-
-  ```
-  # INTERVAL default value: 30s
-  # TIMEOUT default value: 29s
-  make scrape INTERVAL=15s TIMEOUT=14s
+  # PROMBENCH default value: prombench
+  # INTERVAL  default value: 30s
+  # TIMEOUT   default value: 29s
+  make global-scrape INTERVAL=15s TIMEOUT=14s
   ```
 * Modify the shards of prometheus
 
   ```
-  # SHARDS default value: 1
+  # PROMBENCH default value: prombench
+  # SHARDS    default value: 1
   make prometheus SHARDS=2
   ```
 

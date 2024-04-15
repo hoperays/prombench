@@ -7,8 +7,8 @@ metadata:
   name: bench
   namespace: prombench
 spec:
-  image: quay.io/prometheus/prometheus:v2.45.3
-  version: v2.45.3
+  image: quay.io/prometheus/prometheus:v2.45.4
+  version: v2.45.4
   serviceAccountName: prombench
   externalLabels:
     xxxx_cluster_id: bench_cluster
