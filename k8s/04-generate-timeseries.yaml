@@ -1,4 +1,47 @@
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: generate-timeseries
+  namespace: prombench
+data:
+  nginx.conf: |+
+    daemon off;
+    worker_processes auto;
+    pid /tmp/nginx.pid;
+    events {
+      worker_connections 1000000;
+    }
+    http {
+      proxy_cache_path /tmp/nginx/client_temp keys_zone=all:1m max_size=10m;
+      client_body_temp_path /tmp/nginx 1 2;
+      proxy_temp_path /tmp/nginx 1 2;
+      fastcgi_temp_path /tmp/nginx 1 2;
+      uwsgi_temp_path /tmp/nginx 1 2;
+      scgi_temp_path /tmp/nginx 1 2;
+      upstream generate-timeseries {
+        server 127.0.0.1:12345;
+        keepalive 1000;
+      }
+      server {
+        listen 0.0.0.0:12346;
+        server_name foo;
+        access_log off;
+        error_log off;
+        keepalive_disable none;
+        location / {
+          proxy_pass http://generate-timeseries/;
+          proxy_http_version 1.1;
+          proxy_set_header Connection "";
+          proxy_cache all;
+          proxy_cache_lock on;
+          proxy_cache_valid 30s;
+          proxy_cache_background_update on;
+          proxy_cache_use_stale updating;
+        }
+      }
+    }
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,6 +93,30 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
+        - name: proxy-cache
+          image: nginx:1.25.4
+          args:
+            - nginx
+            - -c
+            - /opt/nginx/nginx.conf
+          ports:
+            - containerPort: 12346
+              name: nginx
+          volumeMounts:
+            - mountPath: /opt/nginx
+              name: nginx-cm
+            - mountPath: /tmp/nginx
+              name: nginx-cache
+            - mountPath: /etc/nginx
+              name: nginx-empty
+      volumes:
+        - name: nginx-cm
+          configMap:
+            name: generate-timeseries
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-empty
+          emptyDir: {}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
@@ -72,7 +139,7 @@ spec:
     relabelings:
       - sourceLabels:
           - __meta_kubernetes_pod_container_port_number
-        regex: "12345"
+        regex: "12346"
         action: keep
       - regex: __meta_kubernetes_pod_(node_name|host_ip)
         action: labelmap
