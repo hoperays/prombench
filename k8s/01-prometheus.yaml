@@ -36,9 +36,11 @@ spec:
   routePrefix: "/"
   logLevel: info
   retention: 30d
+  retentionSize: 1.8TB
+  disableCompaction: true
   query:
     maxConcurrency: 20
-    timeout: 2m
+    timeout: 4m
   enableFeatures:
     - extra-scrape-metrics
   serviceMonitorSelector:
@@ -53,6 +55,10 @@ spec:
     matchLabels:
       prometheus.io/used-by: "bench"
   probeNamespaceSelector: {}
+  scrapeConfigSelector:
+    matchLabels:
+      prometheus.io/used-by: "bench"
+  scrapeConfigNamespaceSelector: {}
   securityContext:
     fsGroup: 2000
     runAsNonRoot: true
@@ -69,7 +75,7 @@ spec:
         accessModes: [ReadWriteOnce]
         resources:
           requests:
-            storage: 500Gi
+            storage: 2Ti
   podMetadata:
     labels:
       app: prometheus
@@ -86,6 +92,7 @@ spec:
   thanos:
     image: quay.io/thanos/thanos:v0.32.5
     version: v0.32.5
+    blockSize: 2h
     resources:
       # limits:
       #   cpu: "2000m"
@@ -93,6 +100,10 @@ spec:
       requests:
         cpu: "100m"
         memory: "128Mi"
+  containers:
+    - name: prometheus
+      startupProbe:
+        failureThreshold: 240
 ---
 apiVersion: v1
 kind: Service

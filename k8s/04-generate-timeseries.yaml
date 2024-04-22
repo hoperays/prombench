@@ -51,6 +51,10 @@ metadata:
   namespace: prombench
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
   selector:
     matchLabels:
       app.kubernetes.io/name: generate-timeseries

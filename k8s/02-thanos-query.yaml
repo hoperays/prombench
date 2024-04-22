@@ -8,6 +8,10 @@ metadata:
   namespace: prombench
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
   selector:
     matchLabels:
       app: thanos-query
@@ -51,6 +55,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - query
+            - --query.timeout=5m
             - --query.replica-label=prometheus_replica
             - --query.replica-label=thanos_ruler_replica
             - --store=dnssrv+_grpc._tcp.prometheus-operated

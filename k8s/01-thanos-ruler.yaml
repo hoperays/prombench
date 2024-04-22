@@ -79,6 +79,9 @@ spec:
             matchLabels:
               app: thanos-ruler
               thanos-ruler: bench
+  additionalArgs:
+    - name: tsdb.block-duration
+      value: 2h
 ---
 apiVersion: v1
 kind: Service
