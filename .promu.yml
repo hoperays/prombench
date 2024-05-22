@@ -6,6 +6,8 @@ build:
   binaries:
     - name: expose-many-metrics
       path: ./cmd/expose-many-metrics
+    - name: scrape-federate-metrics
+      path: ./cmd/scrape-federate-metrics
 crossbuild:
   platforms:
     - linux/amd64
