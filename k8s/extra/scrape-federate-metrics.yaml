@@ -1,0 +1,92 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: scrape-federate-metrics
+  name: scrape-federate-metrics
+  namespace: prombench
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scrape-federate-metrics
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scrape-federate-metrics
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: scrape-federate-metrics
+            weight: 1
+      nodeSelector:
+        kubernetes.io/os: linux
+      # tolerations:
+      # - effect: NoSchedule
+      #   key: dedicated
+      #   value: master
+      # - effect: NoSchedule
+      #   key: CriticalAddonsOnly
+      #   value: "True"
+      containers:
+        - name: scrape-federate-metrics
+          image: quay.io/hoperays/prombench:latest
+          imagePullPolicy: Always
+          command:
+          - scrape-federate-metrics
+          args:
+            - --upstream-path=http://thanos-query.prombench.svc.cluster.local:10902/federate
+            - --scrape-interval=20s
+            - --scrape-timeout=19s
+            # for pod in $(kubectl get pod -n prombench | grep generate-timeseries- | head -n 10 | awk '{print$1}'); do echo "        - --matcher=match[]=example_timeseries_total{pod=\"$pod\"}"; done
+            - --matcher=match[]=example_timeseries_total{pod="generate-timeseries-554999b644-6zfcb"}
+          ports:
+            - containerPort: 9089
+              name: metrics
+          resources:
+            # limits:
+            #   cpu: "1000m"
+            #   memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    prometheus.io/used-by: bench
+  name: scrape-federate-metrics
+  namespace: prombench
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scrape-federate-metrics
+  namespaceSelector:
+    matchNames:
+      - prombench
+  podMetricsEndpoints:
+  - path: /metrics
+    # interval: 30s
+    # scrapeTimeout: 29s
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_container_port_number
+        regex: "9089"
+        action: keep
+      - regex: __meta_kubernetes_pod_(node_name|host_ip)
+        action: labelmap
+      - targetLabel: job
+        replacement: scrape-federate-metrics
+        action: replace

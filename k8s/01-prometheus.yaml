@@ -102,6 +102,9 @@ spec:
         memory: "128Mi"
   containers:
     - name: prometheus
+      env:
+        - name: GOGC
+          value: "100"
       startupProbe:
         failureThreshold: 240
 ---
